@@ -5,12 +5,196 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ô Chữ Bí Mật - Kỹ Năng Sống</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        input:focus { outline: none; }
+    </style>
 </head>
-<body>
-    <div id="root"></div>
-    <script type="text/babel" src="app.js"></script>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold text-slate-800 mb-3">Ô Chữ Bí Mật</h1>
+            <p class="text-lg text-slate-600">Kỹ Năng Sống & Hướng Nghiệp</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <!-- Bảng ô chữ -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+                    
+                    <!-- Từ khóa dọc -->
+                    <div class="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200">
+                        <h3 class="text-lg font-semibold text-amber-800 mb-3 text-center">🔑</h3>
+                        <div id="vertical-word" class="flex justify-center gap-2"></div>
+                    </div>
+
+                    <!-- Lưới ô chữ -->
+                    <div class="overflow-x-auto mb-6">
+                        <div id="grid-container"></div>
+                    </div>
+
+                    <!-- Thông báo hoàn thành -->
+                    <div id="completion-message" class="hidden mb-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-center py-4 rounded-xl text-xl font-bold shadow-lg">
+                        🎉 Xuất sắc! Bạn đã hoàn thành!
+                    </div>
+
+                    <!-- Nút điều khiển -->
+                    <div class="flex gap-3 justify-center">
+                        <button onclick="resetGame()" class="px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-xl font-semibold shadow-md transition-all">
+                             Chơi lại
+                        </button>
+                        <button onclick="showAnswers()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition-all">
+                            ️ Xem đáp án
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách câu hỏi -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+                    <h2 class="text-xl font-bold text-slate-800 mb-4 pb-3 border-b border-gray-200">📝 Danh sách câu hỏi</h2>
+                    <div id="questions-list" class="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const gameData = {
+            verticalCol: 7,
+            questions: [
+                { num: 1, question: "Kỹ năng giúp học sinh làm việc chung và hỗ trợ lẫn nhau trong học tập là gì?", answer: "PHOIHOP", startCol: 1 },
+                { num: 2, question: "Ước mơ, khát vọng mà mỗi người nuôi dưỡng cho tương lai gọi là gì?", answer: "HOAIBAO", startCol: 7 },
+                { num: 3, question: "Việc vận dụng kiến thức, kỹ năng đã học vào thực tế học tập và cuộc sống gọi là gì?", answer: "APDUNG", startCol: 7 },
+                { num: 4, question: "Phẩm chất giúp học sinh tin vào bản thân khi giao tiếp và học tập là gì?", answer: "TUTIN", startCol: 5 },
+                { num: 5, question: "Quá trình hoàn thiện bản thân về nhận thức, kỹ năng và nhân cách theo thời gian gọi là gì?", answer: "TRUONGTHANH", startCol: 1 },
+                { num: 6, question: "Phẩm chất giúp con người bền bỉ, không bỏ cuộc trước khó khăn là gì?", answer: "KIENTRI", startCol: 2 },
+                { num: 7, question: "Sức mạnh tinh thần giúp con người vượt qua thử thách để đạt mục tiêu là gì?", answer: "YCHI", startCol: 4 },
+                { num: 8, question: "Công việc gắn bó lâu dài, phù hợp với năng lực và định hướng tương lai của mỗi người gọi là gì?", answer: "NGHENGHIEP", startCol: 4 },
+                { num: 9, question: "Tổng hợp các khả năng giúp con người học tập và làm việc hiệu quả gọi là gì?", answer: "NANGLUC", startCol: 5 }
+            ]
+        };
+
+        let answers = gameData.questions.map(q => Array(q.answer.length).fill(''));
+
+        function initGame() {
+            renderGrid();
+            renderQuestions();
+            renderVerticalWord();
+        }
+
+        function renderGrid() {
+            const container = document.getElementById('grid-container');
+            let html = '<table class="border-collapse"><tbody>';
+            
+            gameData.questions.forEach((q, qIndex) => {
+                html += '<tr>';
+                html += `<td class="pr-3 pb-2"><div class="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-base shadow-sm">${q.num}</div></td>`;
+                
+                for (let col = 0; col < 16; col++) {
+                    const letterIndex = col - q.startCol;
+                    if (letterIndex >= 0 && letterIndex < q.answer.length) {
+                        const isVertical = (q.startCol + letterIndex) === gameData.verticalCol;
+                        const bgColor = isVertical ? 'bg-amber-100 border-amber-300' : 'bg-white border-gray-300';
+                        html += `<td class="p-0 pb-2">
+                            <input type="text" maxlength="1" 
+                                id="cell-${qIndex}-${letterIndex}"
+                                onkeyup="handleInput(${qIndex}, ${letterIndex}, this.value)"
+                                class="w-10 h-10 border-2 text-center text-lg font-bold uppercase ${bgColor} focus:ring-2 focus:ring-blue-400" />
+                        </td>`;
+                    } else {
+                        html += '<td class="w-10 h-10 pb-2"></td>';
+                    }
+                }
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('questions-list');
+            let html = '';
+            gameData.questions.forEach((q, index) => {
+                html += `
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-sm flex-shrink-0">${q.num}</div>
+                            <p class="text-sm text-slate-700 leading-relaxed">${q.question}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderVerticalWord() {
+            const container = document.getElementById('vertical-word');
+            let html = '';
+            gameData.questions.forEach((q, i) => {
+                const letterIndex = gameData.verticalCol - q.startCol;
+                const letter = (letterIndex >= 0 && letterIndex < q.answer.length && answers[i][letterIndex]) 
+                    ? answers[i][letterIndex] : '_';
+                const correct = (letterIndex >= 0 && letterIndex < q.answer.length && answers[i][letterIndex] === q.answer[letterIndex]);
+                const bgColor = correct ? 'bg-amber-400 border-amber-500 text-amber-900' : 'bg-white border-amber-300 text-gray-400';
+                html += `<div class="w-10 h-10 flex items-center justify-center border-2 rounded-lg text-xl font-bold ${bgColor}">${letter}</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function handleInput(qIndex, letterIndex, value) {
+            answers[qIndex][letterIndex] = value.toUpperCase();
+            document.getElementById(`cell-${qIndex}-${letterIndex}`).value = value.toUpperCase();
+            
+            const isVertical = (gameData.questions[qIndex].startCol + letterIndex) === gameData.verticalCol;
+            const correct = value.toUpperCase() === gameData.questions[qIndex].answer[letterIndex];
+            const cell = document.getElementById(`cell-${qIndex}-${letterIndex}`);
+            
+            if (isVertical) {
+                cell.className = correct 
+                    ? 'w-10 h-10 border-2 text-center text-lg font-bold uppercase bg-amber-400 border-amber-500 focus:ring-2 focus:ring-blue-400'
+                    : 'w-10 h-10 border-2 text-center text-lg font-bold uppercase bg-amber-100 border-amber-300 focus:ring-2 focus:ring-blue-400';
+            }
+            
+            renderVerticalWord();
+            checkCompletion();
+        }
+
+        function checkCompletion() {
+            const completed = gameData.questions.every((q, i) => 
+                answers[i].join('') === q.answer
+            );
+            document.getElementById('completion-message').classList.toggle('hidden', !completed);
+        }
+
+        function resetGame() {
+            answers = gameData.questions.map(q => Array(q.answer.length).fill(''));
+            gameData.questions.forEach((q, qIndex) => {
+                for (let i = 0; i < q.answer.length; i++) {
+                    const cell = document.getElementById(`cell-${qIndex}-${i}`);
+                    if (cell) cell.value = '';
+                }
+            });
+            renderVerticalWord();
+            document.getElementById('completion-message').classList.add('hidden');
+        }
+
+        function showAnswers() {
+            gameData.questions.forEach((q, qIndex) => {
+                answers[qIndex] = q.answer.split('');
+                for (let i = 0; i < q.answer.length; i++) {
+                    const cell = document.getElementById(`cell-${qIndex}-${i}`);
+                    if (cell) {
+                        cell.value = q.answer[i];
+                        handleInput(qIndex, i, q.answer[i]);
+                    }
+                }
+            });
+        }
+
+        initGame();
+    </script>
 </body>
 </html>
