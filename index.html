@@ -21,11 +21,9 @@
             <!-- Bảng ô chữ -->
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-                    
-                    <!-- Từ khóa dọc -->
-                    <div class="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200">
-                        <h3 class="text-lg font-semibold text-amber-800 mb-3 text-center">🔑</h3>
-                        <div id="vertical-word" class="flex justify-center gap-2"></div>
+
+                    <!-- Thông báo động -->
+                    <div id="feedback-message" class="mb-6 text-center py-4 rounded-xl text-2xl font-bold shadow-lg transition-all duration-300" style="display: none;">
                     </div>
 
                     <!-- Lưới ô chữ -->
@@ -34,8 +32,8 @@
                     </div>
 
                     <!-- Thông báo hoàn thành -->
-                    <div id="completion-message" class="hidden mb-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-center py-4 rounded-xl text-xl font-bold shadow-lg">
-                        Ngon Luôn!!
+                    <div id="completion-message" class="hidden mb-6 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-center py-5 rounded-xl text-2xl font-bold shadow-lg">
+                        🎉 Ờ Mây Zing Gút Chóp E! 🎉
                     </div>
 
                     <!-- Nút điều khiển -->
@@ -61,6 +59,9 @@
     </div>
 
     <script>
+        const wrongMessages = ["Khê!", "Khó nha!", "Phải chịu!", "OMG!", "Không phải dạng vừa đâu!"];
+        const correctMessages = ["Juan!", "Ngon luôn!", "Nice!", "Gút chóp!", "Dkap!"];
+        
         const gameData = {
             verticalCol: 7,
             questions: [
@@ -77,11 +78,29 @@
         };
 
         let answers = gameData.questions.map(q => Array(q.answer.length).fill(''));
+        let rowLocked = gameData.questions.map(() => false);
+
+        function showFeedback(isCorrect) {
+            const msgBox = document.getElementById('feedback-message');
+            const messages = isCorrect ? correctMessages : wrongMessages;
+            const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+            
+            msgBox.textContent = randomMsg;
+            msgBox.className = `mb-6 text-center py-4 rounded-xl text-2xl font-bold shadow-lg transition-all duration-300 ${
+                isCorrect 
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white' 
+                    : 'bg-gradient-to-r from-red-500 to-rose-500 text-white'
+            }`;
+            msgBox.style.display = 'block';
+            
+            setTimeout(() => {
+                msgBox.style.display = 'none';
+            }, 1500);
+        }
 
         function initGame() {
             renderGrid();
             renderQuestions();
-            renderVerticalWord();
         }
 
         function renderGrid() {
@@ -95,13 +114,15 @@
                 for (let col = 0; col < 16; col++) {
                     const letterIndex = col - q.startCol;
                     if (letterIndex >= 0 && letterIndex < q.answer.length) {
-                        const isVertical = (q.startCol + letterIndex) === gameData.verticalCol;
+                        const currentCol = q.startCol + letterIndex;
+                        const isVertical = currentCol === gameData.verticalCol;
                         const bgColor = isVertical ? 'bg-amber-100 border-amber-300' : 'bg-white border-gray-300';
                         html += `<td class="p-0 pb-2">
                             <input type="text" maxlength="1" 
                                 id="cell-${qIndex}-${letterIndex}"
-                                onkeyup="handleInput(${qIndex}, ${letterIndex}, this.value)"
-                                class="w-10 h-10 border-2 text-center text-lg font-bold uppercase ${bgColor} focus:ring-2 focus:ring-blue-400" />
+                                data-col="${currentCol}"
+                                onkeyup="handleInput(${qIndex}, ${letterIndex})"
+                                class="w-10 h-10 border-2 text-center text-lg font-bold uppercase ${bgColor} focus:ring-2 focus:ring-blue-400 transition-all duration-300" />
                         </td>`;
                     } else {
                         html += '<td class="w-10 h-10 pb-2"></td>';
@@ -130,36 +151,70 @@
             container.innerHTML = html;
         }
 
-        function renderVerticalWord() {
-            const container = document.getElementById('vertical-word');
-            let html = '';
-            gameData.questions.forEach((q, i) => {
-                const letterIndex = gameData.verticalCol - q.startCol;
-                const letter = (letterIndex >= 0 && letterIndex < q.answer.length && answers[i][letterIndex]) 
-                    ? answers[i][letterIndex] : '_';
-                const correct = (letterIndex >= 0 && letterIndex < q.answer.length && answers[i][letterIndex] === q.answer[letterIndex]);
-                const bgColor = correct ? 'bg-amber-400 border-amber-500 text-amber-900' : 'bg-white border-amber-300 text-gray-400';
-                html += `<div class="w-10 h-10 flex items-center justify-center border-2 rounded-lg text-xl font-bold ${bgColor}">${letter}</div>`;
-            });
-            container.innerHTML = html;
+        function handleInput(qIndex, letterIndex) {
+            if (rowLocked[qIndex]) return;
+
+            const cell = document.getElementById(`cell-${qIndex}-${letterIndex}`);
+            const upperValue = cell.value.toUpperCase();
+            
+            cell.value = upperValue;
+            answers[qIndex][letterIndex] = upperValue;
+            
+            const rowComplete = answers[qIndex].every(letter => letter !== '');
+            
+            if (rowComplete) {
+                checkRow(qIndex);
+            }
         }
 
-        function handleInput(qIndex, letterIndex, value) {
-            answers[qIndex][letterIndex] = value.toUpperCase();
-            document.getElementById(`cell-${qIndex}-${letterIndex}`).value = value.toUpperCase();
+        function checkRow(qIndex) {
+            const userAnswer = answers[qIndex].join('');
+            const correctAnswer = gameData.questions[qIndex].answer;
+            const question = gameData.questions[qIndex];
             
-            const isVertical = (gameData.questions[qIndex].startCol + letterIndex) === gameData.verticalCol;
-            const correct = value.toUpperCase() === gameData.questions[qIndex].answer[letterIndex];
-            const cell = document.getElementById(`cell-${qIndex}-${letterIndex}`);
-            
-            if (isVertical) {
-                cell.className = correct 
-                    ? 'w-10 h-10 border-2 text-center text-lg font-bold uppercase bg-amber-400 border-amber-500 focus:ring-2 focus:ring-blue-400'
-                    : 'w-10 h-10 border-2 text-center text-lg font-bold uppercase bg-amber-100 border-amber-300 focus:ring-2 focus:ring-blue-400';
+            if (userAnswer === correctAnswer) {
+                showFeedback(true);
+                
+                // ĐÚNG - Tô màu xanh, nhưng ô dọc màu vàng/cam đậm
+                for (let i = 0; i < question.answer.length; i++) {
+                    const cell = document.getElementById(`cell-${qIndex}-${i}`);
+                    const currentCol = question.startCol + i;
+                    const isVertical = currentCol === gameData.verticalCol;
+                    
+                    if (isVertical) {
+                        // Ô cột dọc - màu vàng/cam nổi bật
+                        cell.className = 'w-10 h-10 border-2 text-center text-lg font-bold uppercase bg-amber-400 border-amber-600 text-amber-900 focus:ring-2 focus:ring-amber-400 transition-all duration-300';
+                    } else {
+                        // Ô bình thường - màu xanh
+                        cell.className = 'w-10 h-10 border-2 text-center text-lg font-bold uppercase bg-green-400 border-green-500 text-white focus:ring-2 focus:ring-green-400 transition-all duration-300';
+                    }
+                    cell.disabled = true;
+                }
+                rowLocked[qIndex] = true;
+                checkCompletion();
+            } else {
+                showFeedback(false);
+                
+                // SAI - Tô màu đỏ
+                for (let i = 0; i < question.answer.length; i++) {
+                    const cell = document.getElementById(`cell-${qIndex}-${i}`);
+                    cell.className = 'w-10 h-10 border-2 text-center text-lg font-bold uppercase bg-red-400 border-red-500 text-white focus:ring-2 focus:ring-red-400 transition-all duration-300';
+                    cell.disabled = true;
+                }
+                
+                setTimeout(() => {
+                    for (let i = 0; i < question.answer.length; i++) {
+                        const cell = document.getElementById(`cell-${qIndex}-${i}`);
+                        cell.value = '';
+                        cell.disabled = false;
+                        const currentCol = question.startCol + i;
+                        const isVertical = currentCol === gameData.verticalCol;
+                        const bgColor = isVertical ? 'bg-amber-100 border-amber-300' : 'bg-white border-gray-300';
+                        cell.className = `w-10 h-10 border-2 text-center text-lg font-bold uppercase ${bgColor} focus:ring-2 focus:ring-blue-400 transition-all duration-300`;
+                        answers[qIndex][i] = '';
+                    }
+                }, 800);
             }
-            
-            renderVerticalWord();
-            checkCompletion();
         }
 
         function checkCompletion() {
@@ -171,14 +226,23 @@
 
         function resetGame() {
             answers = gameData.questions.map(q => Array(q.answer.length).fill(''));
+            rowLocked = gameData.questions.map(() => false);
+            
             gameData.questions.forEach((q, qIndex) => {
                 for (let i = 0; i < q.answer.length; i++) {
                     const cell = document.getElementById(`cell-${qIndex}-${i}`);
-                    if (cell) cell.value = '';
+                    if (cell) {
+                        cell.value = '';
+                        cell.disabled = false;
+                        const currentCol = q.startCol + i;
+                        const isVertical = currentCol === gameData.verticalCol;
+                        const bgColor = isVertical ? 'bg-amber-100 border-amber-300' : 'bg-white border-gray-300';
+                        cell.className = `w-10 h-10 border-2 text-center text-lg font-bold uppercase ${bgColor} focus:ring-2 focus:ring-blue-400 transition-all duration-300`;
+                    }
                 }
             });
-            renderVerticalWord();
             document.getElementById('completion-message').classList.add('hidden');
+            document.getElementById('feedback-message').style.display = 'none';
         }
 
         function showAnswers() {
@@ -188,10 +252,22 @@
                     const cell = document.getElementById(`cell-${qIndex}-${i}`);
                     if (cell) {
                         cell.value = q.answer[i];
-                        handleInput(qIndex, i, q.answer[i]);
+                        const currentCol = q.startCol + i;
+                        const isVertical = currentCol === gameData.verticalCol;
+                        
+                        if (isVertical) {
+                            // Ô cột dọc - màu vàng/cam
+                            cell.className = 'w-10 h-10 border-2 text-center text-lg font-bold uppercase bg-amber-400 border-amber-600 text-amber-900 transition-all duration-300';
+                        } else {
+                            // Ô bình thường - màu xanh
+                            cell.className = 'w-10 h-10 border-2 text-center text-lg font-bold uppercase bg-green-400 border-green-500 text-white transition-all duration-300';
+                        }
+                        cell.disabled = true;
                     }
                 }
+                rowLocked[qIndex] = true;
             });
+            checkCompletion();
         }
 
         initGame();
